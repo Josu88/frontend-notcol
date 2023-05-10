@@ -1,5 +1,6 @@
 import "../App.css";
 import { useNavigate } from "react-router-dom";
+import { createClient } from "@supabase/supabase-js";
 import { useContext, useState, useRef } from "react";
 import { deleteNewsService, disLikeService } from "../services";
 import { likeService } from "../services";
@@ -19,8 +20,12 @@ export const News = ({
   const [error, setError] = useState("");
   const [photo, setPhoto] = useState(null);
   const navigate = useNavigate();
-
   const photoInputRef = useRef();
+  const { v4: uuidv4 } = require("uuid");
+  const supabase = createClient(
+    process.env.REACT_APP_SUPABASE_URL,
+    process.env.REACT_APP_SUPABASE_KEY
+  );
 
   const deleteNews = async (id) => {
     try {
@@ -41,10 +46,15 @@ export const News = ({
       const data = new FormData();
       data.set("photo", photo);
 
+      // Generamos un nombre único para la imagen
+      const imageName = uuidv4() + ".jpg";
+
       const { photo: newPhoto } = await addPhotoService({ id, data, token });
       setPhoto(null);
       photoInputRef.current.value = "";
       addNewPhoto(id, newPhoto);
+
+      await supabase.storage.from("static").upload(imageName, data);
     } catch (error) {
       setError(error.message);
     }
