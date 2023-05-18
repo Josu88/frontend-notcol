@@ -1,11 +1,11 @@
 import "../App.css";
 import { useNavigate } from "react-router-dom";
-import { createClient } from "@supabase/supabase-js";
 import { useContext, useState, useRef } from "react";
 import { deleteNewsService, disLikeService } from "../services";
 import { likeService } from "../services";
 import { addPhotoService } from "../services";
 import { AuthContext } from "../context/AuthContext";
+import { delFileFromBucket, uploadFileToBucket } from "../services/storage";
 
 export const News = ({
   news,
@@ -16,20 +16,17 @@ export const News = ({
   addNewPhoto,
   removeNews,
 }) => {
-  const { token, idUser } = useContext(AuthContext);
+  const { token, idUser, imgName, setImgName } = useContext(AuthContext);
   const [error, setError] = useState("");
   const [photo, setPhoto] = useState(null);
   const navigate = useNavigate();
   const photoInputRef = useRef();
-  const { v4: uuidv4 } = require("uuid");
-  const supabase = createClient(
-    process.env.REACT_APP_SUPABASE_URL,
-    process.env.REACT_APP_SUPABASE_KEY
-  );
+  const Bucket = "static";
 
-  const deleteNews = async (id) => {
+  const deleteNews = async (id, Bucket, path) => {
     try {
       await deleteNewsService({ id, token });
+      await delFileFromBucket(Bucket, path);
 
       if (removeNews) {
         removeNews(id);
@@ -46,15 +43,14 @@ export const News = ({
       const data = new FormData();
       data.set("photo", photo);
 
-      // Generamos un nombre único para la imagen
-      const imageName = uuidv4() + ".jpg";
-
       const { photo: newPhoto } = await addPhotoService({ id, data, token });
       setPhoto(null);
       photoInputRef.current.value = "";
       addNewPhoto(id, newPhoto);
 
-      await supabase.storage.from("static").upload(imageName, data);
+      await uploadFileToBucket(Bucket, newPhoto, data);
+      localStorage.setItem("imgName", newPhoto);
+      setImgName(newPhoto);
     } catch (error) {
       setError(error.message);
     }
@@ -96,8 +92,8 @@ export const News = ({
           <section className="photoNew">
             {news.photo ? (
               <img
-                src={`${process.env.REACT_APP_BACKEND}/photos/${news.photo}`}
-                alt={news.photo}
+                src={`https://sfxvtwswtbcnarggjvny.supabase.co/storage/v1/object/public/static/${imgName}`}
+                alt={imgName}
               />
             ) : (
               "No hay foto"
@@ -167,7 +163,8 @@ export const News = ({
               <button
                 className="DelButton"
                 onClick={() => {
-                  if (window.confirm("Are you sure?")) deleteNews(news.id);
+                  if (window.confirm("Are you sure?"))
+                    deleteNews(news.id, Bucket, imgName);
                 }}
               >
                 Delete news
