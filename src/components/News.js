@@ -16,9 +16,10 @@ export const News = ({
   addNewPhoto,
   removeNews,
 }) => {
-  const { token, idUser, imgName, setImgName } = useContext(AuthContext);
+  const { token, idUser } = useContext(AuthContext);
   const [error, setError] = useState("");
   const [photo, setPhoto] = useState(null);
+  const [imgName, setImgName] = useState(localStorage.getItem(`New${news.id}`));
   const navigate = useNavigate();
   const photoInputRef = useRef();
   const Bucket = "static";
@@ -27,6 +28,8 @@ export const News = ({
     try {
       await deleteNewsService({ id, token });
       await delFileFromBucket(Bucket, path);
+
+      localStorage.removeItem(`New${id}`);
 
       if (removeNews) {
         removeNews(id);
@@ -49,7 +52,7 @@ export const News = ({
       addNewPhoto(id, newPhoto);
 
       await uploadFileToBucket(Bucket, newPhoto, data);
-      localStorage.setItem("imgName", newPhoto);
+      localStorage.setItem(`New${news.id}`, newPhoto);
       setImgName(newPhoto);
     } catch (error) {
       setError(error.message);
